@@ -1,0 +1,11 @@
+*.pyc
+bin
+include
+lib
+lib64
+build
+local_settings.py
+src
+local
+secrets/*
+share

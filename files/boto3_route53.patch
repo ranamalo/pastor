@@ -1,0 +1,26 @@
+--- originals3/boto3_route53.py 2018-03-29 18:52:57.000000000 +0000
++++ working/modules_boto3_route53.py    2018-05-11 20:59:06.927693474 +0000
+@@ -551,6 +551,11 @@
+             r = conn.associate_vpc_with_hosted_zone(**args)
+             return _wait_for_sync(r['ChangeInfo']['Id'], conn)
+         except ClientError as e:
++            # pull request: ConflictingDomainExists https://github.com/saltstack/salt/pull/47480
++            if e.response.get('Error', {}).get('Code') == 'ConflictingDomainExists':
++                log.debug('VPC Association already exists.')
++                # return True since the current state is the desired one
++                return True
+             if tries and e.response.get('Error', {}).get('Code') == 'Throttling':
+                 log.debug('Throttled by AWS API.')
+                 time.sleep(3)
+@@ -642,6 +647,11 @@
+             r = conn.disassociate_vpc_from_hosted_zone(**args)
+             return _wait_for_sync(r['ChangeInfo']['Id'], conn)
+         except ClientError as e:
++            # pull request: VPCAssociationNotFound https://github.com/saltstack/salt/pull/47430
++            if e.response.get('Error', {}).get('Code') == 'VPCAssociationNotFound':
++                log.debug('No VPC Association exists.')
++                # return True since the current state is the desired one
++                return True
+             if tries and e.response.get('Error', {}).get('Code') == 'Throttling':
+                 log.debug('Throttled by AWS API.')
+                 time.sleep(3)

@@ -1,0 +1,22 @@
+--- /usr/lib/python2.7/dist-packages/salt/states/boto_vpc.py    2018-03-29 18:52:58.000000000 +0000
++++ working/states_boto_vpc.py  2018-05-11 17:24:48.483546497 +0000
+@@ -498,7 +498,8 @@
+ 
+ 
+ def subnet_present(name, cidr_block, vpc_name=None, vpc_id=None,
+-                   availability_zone=None, tags=None,
++                   # pull request: auto_assign_public_ipv4  https://github.com/saltstack/salt/pull/47613/files
++                   availability_zone=None, auto_assign_public_ipv4=False, tags=None,
+                    region=None, key=None,
+                    keyid=None, profile=None,
+                    route_table_id=None, route_table_name=None):
+@@ -610,6 +611,8 @@
+         r = __salt__['boto_vpc.create_subnet'](subnet_name=name,
+                                                cidr_block=cidr_block,
+                                                availability_zone=availability_zone,
++                                               # pull request: auto_assign_public_ipv4  https://github.com/saltstack/salt/pull/47613/files
++                                               auto_assign_public_ipv4=auto_assign_public_ipv4,
+                                                vpc_name=vpc_name, vpc_id=vpc_id,
+                                                tags=tags, region=region,
+                                                key=key, keyid=keyid,
+

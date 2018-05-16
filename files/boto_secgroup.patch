@@ -1,0 +1,13 @@
+--- originals/boto_secgroup.py  2018-03-29 18:52:57.000000000 +0000
++++ working/modules_boto_secgroup.py    2018-05-11 16:38:14.468381452 +0000
+@@ -473,6 +473,10 @@
+                 log.error(msg)
+                 return False
+         except boto.exception.EC2ResponseError as e:
++            # pull request: https://github.com/saltstack/salt/pull/47525
++            # if we are trying to add the same rule then we are already in the desired state, return true
++            if e.error_code == 'InvalidPermission.Duplicate':
++                return True
+             msg = ('Failed to add rule to security group {0} with id {1}.'
+                    .format(group.name, group.id))
+             log.error(msg)

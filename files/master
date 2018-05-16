@@ -1,0 +1,14 @@
+file_roots:
+  base:
+    - /srv/saltmaster/state
+    - /srv/formulas/salt-formula
+  dev:
+    - /srv/saltmaster/state/dev
+fileserver_backend:
+  - roots
+pillar_roots:
+  base:
+    - /srv/saltmaster/pillar
+  dev:
+    - /srv/saltmaster/pillar/dev
+

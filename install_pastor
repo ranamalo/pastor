@@ -1,0 +1,127 @@
+#!/bin/bash
+
+# pretty colors
+declare -x NC='\e[0m' # No Color
+declare -x Red='\e[1;31m'
+declare -x Green='\e[1;32m'
+declare -x Yellow='\e[1;33m'
+declare -x Blue='\e[1;34m'
+declare -x Magenta='\e[1;35m'
+declare -x Cyan='\e[1;36m'
+declare -x White='\e[1;37m'
+
+# get script dir
+current_dir=$(pwd)
+script_dir=$(dirname $0)
+
+if [ $script_dir = '.' ]
+then
+        script_dir="$current_dir"
+fi
+
+if which virtualenv.py > /dev/null 2>&1
+then
+    virtual_py_alternative=$(which virtualenv.py)
+fi
+
+if virtualenv --version > /dev/null 2>&1
+then
+  virtual=virtualenv
+else
+  virtual="$virtual_py_alternative"
+fi
+
+if $virtual --python=python3 ${script_dir}
+then
+	cd ${script_dir}
+	source bin/activate
+	pip install -r requirements.txt
+else
+	printf "${Red}Warning${NC} virtualenv not installed. Quitting\n"
+	exit 1
+fi
+
+printf "
+
+${Blue}Remember you need to create a file called local_settings.py in the root of this virtualenv with the following format:${NC}
+import os
+import sys
+import vmtools
+vm_root_path = vmtools.vm_root_grabber()
+sys.path.append(vm_root_path)
+# local_settings.py variables should be all caps
+
+# local directory where to find files
+LOCAL_FILE_DIRECTORY = '{}/files/'.format(vm_root_path)
+# local directory where to find secrets
+SECRETS_FILE_DIRECTORY = '{}/secrets/'.format(vm_root_path)
+# a directory called 'secrets' must be created in the root of this repo and the following placed there:
+# any keypairs in the ENVIRONMENT_DICT and a tar ball of your gpg keys if you are using encrypted pillars (gpgkeys.tar.gz)
+# the keypairs are used to connect to the new saltmaste initially via ssh
+
+# SSH_SETUP_DICT
+# used to connect via ssh for initial setup on the saltmaster
+# username: (examples: 'ubuntu' or 'root')
+# use_sudo: wether to use sudo or not
+# debug: boolean; turn on or off debug and print stdout for ssh actions
+SSH_SETUP_DICT = {
+        'username': 'ubuntu',
+        'use_sudo': True,
+        'debug': False
+        }
+
+# MAIL_CONFIG_DICT is required by senderror which is used by certain sshmaster methods
+# MAIL_USER and MAIL_PASS refer to the gmail account to use to send error messages (only gmail works at this time). MAIL_RECIPIENTS is a list of emails (strings) to be notified of errors
+MAIL_CONFIG_DICT = {
+    'MAIL_USER': '<user@gmail.com>',
+    'MAIL_PASS': '<gmail_password>',
+    'MAIL_RECIPIENTS': ['<user@domain.com>', '<user2@domain.com>]
+    }
+
+# SALTMASTER_SETUP_LIST is a list of files to create and commands to execute on the new saltmaster
+# the three examples in the following list are:
+# example of an scp
+# example of a remotely executed command
+# example of a file created with file content string and variable substitution. currently only the variable $saltmasterhostname is available; see the docstring for pastor.execute_remote_resources for more information
+SALTMASTER_SETUP_LIST = [
+        { 'resource_type': 'file', 'remote_file_path': '/root/.ssh/server_ssh_private_key', 'file_mode' : 600, 'file_owner': 'root', 'local_file_path': SECRETS_FILE_DIRECTORY+'server_ssh_private_key' },
+        { 'resource_type': 'command', 'remote_command': 'mkdir -p /tmp/salt_temp_dir' },
+        { 'resource_type': 'file', 'remote_file_path': '/tmp/salt_temp_dir/gpgkeys.tar.gz', 'file_mode' : 600, 'file_owner': 'root', 'local_file_path': SECRETS_FILE_DIRECTORY+'gpgkeys.tar.gz' },
+        { 'resource_type': 'file', 'remote_file_path': '/tmp/salt_temp_dir/master', 'file_mode' : 644, 'file_owner': 'root', 'local_file_path': LOCAL_FILE_DIRECTORY+'master' },
+        { 'resource_type': 'file', 'remote_file_path': '/tmp/salt_temp_dir/grains', 'file_mode' : 644, 'file_owner': 'root', 'local_file_path': LOCAL_FILE_DIRECTORY+'grains' },
+        { 'resource_type': 'file', 'remote_file_path': '/tmp/salt_temp_dir/master.conf', 'file_mode' : 644, 'file_owner': 'root', 'file_content': 'master: $saltmasterhostname' },
+        { 'resource_type': 'file', 'remote_file_path': '/tmp/salt_temp_dir/boto3_route53.patch', 'file_mode' : 644, 'file_owner': 'root', 'local_file_path': LOCAL_FILE_DIRECTORY+'boto3_route53.patch' },
+        { 'resource_type': 'file', 'remote_file_path': '/tmp/salt_temp_dir/boto_secgroup.patch', 'file_mode' : 644, 'file_owner': 'root', 'local_file_path': LOCAL_FILE_DIRECTORY+'boto_secgroup.patch' },
+        { 'resource_type': 'file', 'remote_file_path': '/tmp/salt_temp_dir/boto_vpc.patch', 'file_mode' : 644, 'file_owner': 'root', 'local_file_path': LOCAL_FILE_DIRECTORY+'boto_vpc.patch' },
+        { 'resource_type': 'file', 'remote_file_path': '/tmp/salt_temp_dir/states_boto_vpc.patch', 'file_mode' : 644, 'file_owner': 'root', 'local_file_path': LOCAL_FILE_DIRECTORY+'states_boto_vpc.patch' },
+        ]
+
+# The default size for the saltmaster intance
+DEFAULT_SALTMASTER_INSTANCE_SIZE = 'm4.xlarge'
+# Environment_DICT
+# the private ssh keys for keypairs in this dictionary should be placed in the 'files' directory
+# the saltmaster_instance_profile_arn is an iam role you create using the aws managed policy called "AdministratorAccess"
+# saltmaster_instance_profile_arn can also be set to None to not use iam roles
+ENVIRONMENT_DICT = {
+        'prod': {
+            'keypair': '<keypair_name>',
+            'keypair_path': LOCAL_FILE_DIRECTORY+'<keypair_filename>',
+            'domain': '<domain>',
+            'saltmaster_instance_profile_arn': '<aws_arn_address>'
+            },
+        'dev': {
+            'keypair': '<keypair_name>',
+            'keypair_path': LOCAL_FILE_DIRECTORY+'<keypair_filename>',
+            'domain': '<domain>',
+            'saltmaster_instance_profile_arn': '<aws_arn_address>'
+            }
+        }
+
+# the ami prefix for finding the latest ami
+# this could be the whole name of the ami if there is no version number
+AMI_NAME_PREFIX='<ami_prefix>*'
+
+
+${Blue}Make sure it's not world readable:${NC}
+chmod 600 local_settings.py
+"
